@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'src/features/me/bloc/me_bloc.dart';
 import 'src/features/media_devices/bloc/media_devices_bloc.dart';
-import 'src/features/peers/bloc/peers_bloc.dart';
+import 'src/features/peers/peers.dart';
 import 'src/features/producers/bloc/producers_bloc.dart';
 import 'src/features/room/bloc/room_bloc.dart';
 import 'src/features/signaling/room_client_repository.dart';
@@ -14,7 +14,7 @@ export 'src/app_modules/app_modules.dart';
 export 'src/features/media_devices/bloc/media_devices_bloc.dart';
 export 'src/features/producers/bloc/producers_bloc.dart';
 export 'src/features/signaling/room_client_repository.dart';
-export 'src/features/peers/bloc/peers_bloc.dart';
+export 'src/features/peers/peers.dart';
 export 'src/room_modules.dart';
 export 'src/room_options.dart';
 

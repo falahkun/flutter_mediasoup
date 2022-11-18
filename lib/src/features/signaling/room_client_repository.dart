@@ -303,7 +303,10 @@ class RoomClientRepository {
                 'dtlsParameters': data['dtlsParameters'].toMap(),
               })
               .then(data['callback'])
-              .catchError(data['errback']);
+              .catchError((err) {
+                log('onSocketError($err)');
+            data['errback'](err);
+          });
         });
 
         _sendTransport!.on('produce', (Map data) async {
@@ -405,6 +408,7 @@ class RoomClientRepository {
     } catch (error) {
       isLoading.value = false;
       connectionState.value = ConnectionState.done;
+      log('onError($error)');
       print(error);
       close();
     }
