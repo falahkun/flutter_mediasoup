@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:developer';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:gt_mediasoup/src/features/me/bloc/me_bloc.dart';
 import 'package:gt_mediasoup/src/features/media_devices/bloc/media_devices_bloc.dart';
 import 'package:gt_mediasoup/src/features/peers/bloc/peers_bloc.dart';
 import 'package:gt_mediasoup/src/features/producers/bloc/producers_bloc.dart';
 import 'package:gt_mediasoup/src/features/room/bloc/room_bloc.dart';
 import 'package:gt_mediasoup/src/features/signaling/web_socket.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:mediasoup_client_flutter/mediasoup_client_flutter.dart';
 
 class RoomClientRepository {
@@ -39,8 +39,7 @@ class RoomClientRepository {
   Map<String, DataConsumer> _dataConsumers = <String, DataConsumer>{};
 
   ValueNotifier<bool> isLoading = ValueNotifier(false);
-  ValueNotifier<ConnectionState> connectionState =
-      ValueNotifier(ConnectionState.none);
+  ValueNotifier<ConnectionState> connectionState = ValueNotifier(ConnectionState.none);
 
   RoomClientRepository({
     required this.producersBloc,
@@ -55,28 +54,24 @@ class RoomClientRepository {
   }) {
     _mediaDevicesBlocSubscription =
         mediaDevicesBloc.stream.listen((MediaDevicesState state) async {
-      if (state.selectedAudioInput != null &&
-          state.selectedAudioInput?.deviceId != audioInputDeviceId) {
-        await disableMic();
-        enableMic();
-      }
+          if (state.selectedAudioInput != null &&
+              state.selectedAudioInput?.deviceId != audioInputDeviceId) {
+            await disableMic();
+            enableMic();
+          }
 
-      if (state.selectedVideoInput != null &&
-          state.selectedVideoInput?.deviceId != videoInputDeviceId) {
-        await disableWebcam();
-        enableWebcam();
-      }
-    });
+          if (state.selectedVideoInput != null &&
+              state.selectedVideoInput?.deviceId != videoInputDeviceId) {
+            await disableWebcam();
+            enableWebcam();
+          }
+        });
   }
 
   void close() {
     if (_closed) {
       return;
     }
-
-    peersBloc.state.peers.forEach((key, value) {
-      peersBloc.add(PeerRemove(peerId: key));
-    });
 
     _webSocket?.close();
     _sendTransport?.close();
@@ -98,20 +93,18 @@ class RoomClientRepository {
   }
 
   Future<void> disableWebcam() async {
+    meBloc.add(MeSetWebcamInProgress(progress: true));
+    String webcamId = producersBloc.state.webcam!.id;
+
+    producersBloc.add(ProducerRemove(source: 'webcam'));
+
     try {
-      meBloc.add(MeSetWebcamInProgress(progress: true));
-      String webcamId = producersBloc.state.webcam!.id;
-
-      producersBloc.add(ProducerRemove(source: 'webcam'));
-
-      try {
-        await _webSocket!.socket.request('closeProducer', {
-          'producerId': webcamId,
-        });
-      } finally {
-        meBloc.add(MeSetWebcamInProgress(progress: false));
-      }
-    } catch (err) {}
+      await _webSocket!.socket.request('closeProducer', {
+        'producerId': webcamId,
+      });
+    } catch (error) {} finally {
+      meBloc.add(MeSetWebcamInProgress(progress: false));
+    }
   }
 
   Future<void> muteMic() async {
@@ -166,7 +159,7 @@ class RoomClientRepository {
     };
 
     MediaStream stream =
-        await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
     return stream;
   }
@@ -178,7 +171,7 @@ class RoomClientRepository {
       'video': {
         'mandatory': {
           'minWidth':
-              '1280', // Provide your own width, height and frame rate here
+          '1280', // Provide your own width, height and frame rate here
           'minHeight': '720',
           'minFrameRate': '30',
         },
@@ -191,7 +184,7 @@ class RoomClientRepository {
     };
 
     MediaStream stream =
-        await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    await navigator.mediaDevices.getUserMedia(mediaConstraints);
 
     return stream;
   }
@@ -201,8 +194,7 @@ class RoomClientRepository {
       return;
     }
     meBloc.add(MeSetWebcamInProgress(progress: true));
-    if (_mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeVideo) ==
-        false) {
+    if (_mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeVideo) == false) {
       return;
     }
     MediaStream? videoStream;
@@ -212,10 +204,9 @@ class RoomClientRepository {
       final videoVPVersion = kIsWeb ? 9 : 8;
       RtpCodecCapability? codec = _mediasoupDevice!.rtpCapabilities.codecs
           .firstWhere(
-              (RtpCodecCapability c) =>
-                  c.mimeType.toLowerCase() == 'video/vp$videoVPVersion',
-              orElse: () =>
-                  throw 'desired vp$videoVPVersion codec+configuration is not supported');
+              (RtpCodecCapability c) => c.mimeType.toLowerCase() == 'video/vp$videoVPVersion',
+          orElse: () =>
+          throw 'desired vp$videoVPVersion codec+configuration is not supported');
       videoStream = await createVideoStream();
       track = videoStream.getVideoTracks().first;
       meBloc.add(MeSetWebcamInProgress(progress: true));
@@ -224,12 +215,9 @@ class RoomClientRepository {
         codecOptions: ProducerCodecOptions(
           videoGoogleStartBitrate: 1000,
         ),
-        encodings: kIsWeb
-            ? [
-                RtpEncodingParameters(
-                    scalabilityMode: 'S3T3_KEY', scaleResolutionDownBy: 1.0),
-              ]
-            : [],
+        encodings: kIsWeb ? [
+          RtpEncodingParameters(scalabilityMode: 'S3T3_KEY', scaleResolutionDownBy: 1.0),
+        ] : [],
         stream: videoStream,
         appData: {
           'source': 'webcam',
@@ -245,8 +233,7 @@ class RoomClientRepository {
   }
 
   void enableMic() async {
-    if (_mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeAudio) ==
-        false) {
+    if (_mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeAudio) == false) {
       return;
     }
 
@@ -276,26 +263,23 @@ class RoomClientRepository {
       _mediasoupDevice = Device();
 
       dynamic routerRtpCapabilities =
-          await _webSocket!.socket.request('getRouterRtpCapabilities', {});
+      await _webSocket!.socket.request('getRouterRtpCapabilities', {});
 
       print(routerRtpCapabilities);
       log('routerRtpCapabilities($routerRtpCapabilities)');
 
       final rtpCapabilities = RtpCapabilities.fromMap(routerRtpCapabilities);
-      rtpCapabilities.headerExtensions
-          .removeWhere((he) => he.uri == 'urn:3gpp:video-orientation');
+      rtpCapabilities.headerExtensions.removeWhere((he) => he.uri == 'urn:3gpp:video-orientation');
       await _mediasoupDevice!.load(routerRtpCapabilities: rtpCapabilities);
 
-      if (_mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeAudio) ==
-              true ||
-          _mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeVideo) ==
-              true) {
+      if (_mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeAudio) == true ||
+          _mediasoupDevice!.canProduce(RTCRtpMediaType.RTCRtpMediaTypeVideo) == true) {
         _produce = true;
       }
 
       if (_produce) {
         Map transportInfo =
-            await _webSocket!.socket.request('createWebRtcTransport', {
+        await _webSocket!.socket.request('createWebRtcTransport', {
           'forceTcp': false,
           'producing': true,
           'consuming': false,
@@ -315,14 +299,14 @@ class RoomClientRepository {
           connectionState.value = ConnectionState.active;
           _webSocket!.socket
               .request('connectWebRtcTransport', {
-                'transportId': _sendTransport!.id,
-                'dtlsParameters': data['dtlsParameters'].toMap(),
-              })
+            'transportId': _sendTransport!.id,
+            'dtlsParameters': data['dtlsParameters'].toMap(),
+          })
               .then(data['callback'])
               .catchError((err) {
-                log('onSocketError($err)');
-                data['errback'](err);
-              });
+            log('onSocketError($err)');
+            data['errback'](err);
+          });
         });
 
         _sendTransport!.on('produce', (Map data) async {
@@ -380,16 +364,15 @@ class RoomClientRepository {
 
         _recvTransport!.on(
           'connect',
-          (data) {
+              (data) {
             _webSocket!.socket
                 .request(
-                  'connectWebRtcTransport',
-                  {
-                    'transportId': _recvTransport!.id,
-                    'dtlsParameters': data['dtlsParameters'].toMap(),
-                  },
-                )
-                .then(data['callback'])
+              'connectWebRtcTransport',
+              {
+                'transportId': _recvTransport!.id,
+                'dtlsParameters': data['dtlsParameters'].toMap(),
+              },
+            ).then(data['callback'])
                 .catchError(data['errback']);
           },
         );
@@ -421,6 +404,7 @@ class RoomClientRepository {
           }
         });
       }
+
     } catch (error) {
       isLoading.value = false;
       connectionState.value = ConnectionState.done;
@@ -464,11 +448,11 @@ class RoomClientRepository {
       print(data);
     });
 
-    peersBloc.add(
-        PeerAddConsumer(peerId: consumer.peerId ?? '', dataConsumer: consumer));
+    peersBloc.add(PeerAddConsumer(peerId: consumer.peerId ?? '', dataConsumer: consumer));
 
     accept({});
   }
+
 
   // void enableBotDataProducer() {
   //   try {
@@ -479,7 +463,6 @@ class RoomClientRepository {
   // }
 
   bool test1 = true;
-
   void join({required String roomCode}) {
     isLoading.value = true;
     connectionState.value = ConnectionState.waiting;
@@ -524,7 +507,7 @@ class RoomClientRepository {
                 kind: RTCRtpMediaTypeExtension.fromString(
                     request['data']['kind']),
                 rtpParameters:
-                    RtpParameters.fromMap(request['data']['rtpParameters']),
+                RtpParameters.fromMap(request['data']['rtpParameters']),
                 appData: Map<String, dynamic>.from(request['data']['appData']),
                 peerId: request['data']['peerId'],
                 accept: accept,
@@ -535,50 +518,44 @@ class RoomClientRepository {
             }
             break;
           }
-        case 'newDataConsumer':
-          {
-            if (!_consume) {
-              reject(403, 'I do not want to consume');
-              break;
-            }
-            if (request['data']['label'] == 'chat') {
-              try {
-                test1 = false;
-                _recvTransport!.consumeData(
-                  id: request['data']['id'],
-                  dataProducerId: request['data']['dataProducerId'],
-                  sctpStreamParameters: SctpStreamParameters(
-                    streamId: request['data']['sctpStreamParameters']
-                        ['streamId'],
-                    ordered: request['data']['sctpStreamParameters']['ordered'],
-                    maxRetransmits: request['data']['sctpStreamParameters']
-                        ['maxRetransmits'],
-                    maxPacketLifeTime: request['data']['sctpStreamParameters']
-                        ['maxPacketLifeTime'],
-                    protocol: request['data']['protocol'],
-                    label: request['data']['label'],
-                    priority: Priority.values.firstWhere(
-                        (p) =>
-                            request['data']['sctpStreamParameters']
-                                ['priority'] ==
-                            p.name,
-                        orElse: () => Priority.Medium),
-                  ),
-                  label: request['data']['label'],
-                  protocol: request['data']['protocol'],
-                  appData: <String, dynamic>{
-                    ...request['data']['appData'],
-                    'peerId': request['data']['peerId'],
-                  },
-                  accept: accept,
-                  peerId: request['data']['peerId'],
-                );
-              } catch (e, st) {
-                throw e;
-              }
-            }
+        case 'newDataConsumer': {
+          if (!_consume) {
+            reject(403, 'I do not want to consume');
             break;
           }
+          if (request['data']['label'] == 'chat') {
+            try {
+              test1 = false;
+              _recvTransport!.consumeData(
+                id: request['data']['id'],
+                dataProducerId: request['data']['dataProducerId'],
+                sctpStreamParameters: SctpStreamParameters(
+                  streamId: request['data']['sctpStreamParameters']['streamId'],
+                  ordered: request['data']['sctpStreamParameters']['ordered'],
+                  maxRetransmits: request['data']['sctpStreamParameters']['maxRetransmits'],
+                  maxPacketLifeTime: request['data']['sctpStreamParameters']['maxPacketLifeTime'],
+                  protocol: request['data']['protocol'],
+                  label: request['data']['label'],
+                  priority: Priority.values.firstWhere(
+                          (p) => request['data']['sctpStreamParameters']['priority'] == p.name,
+                      orElse: () => Priority.Medium
+                  ),
+                ),
+                label: request['data']['label'],
+                protocol: request['data']['protocol'],
+                appData: <String, dynamic>{
+                  ...request['data']['appData'],
+                  'peerId': request['data']['peerId'],
+                },
+                accept: accept,
+                peerId: request['data']['peerId'],
+              );
+            } catch (e, st) {
+              throw e;
+            }
+          }
+          break;
+        }
         default:
           break;
       }
@@ -586,7 +563,7 @@ class RoomClientRepository {
 
     _webSocket!.onNotification = (notification) async {
       switch (notification['method']) {
-        //TODO: todo;
+      //TODO: todo;
         case 'producerScore':
           {
             break;
@@ -614,8 +591,7 @@ class RoomClientRepository {
 
         case 'newPeer':
           {
-            final Map<String, dynamic> newPeer =
-                Map<String, dynamic>.from(notification['data']);
+            final Map<String, dynamic> newPeer = Map<String, dynamic>.from(notification['data']);
             peersBloc.add(PeerAdd(newPeer: newPeer));
             break;
           }
