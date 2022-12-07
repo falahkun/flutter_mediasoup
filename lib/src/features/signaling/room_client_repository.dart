@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:gt_mediasoup/gt_mediasoup.dart';
 import 'package:gt_mediasoup/src/features/me/bloc/me_bloc.dart';
 import 'package:gt_mediasoup/src/features/media_devices/bloc/media_devices_bloc.dart';
 import 'package:gt_mediasoup/src/features/peers/bloc/peers_bloc.dart';
@@ -24,12 +25,17 @@ class RoomClientRepository {
   final String url;
   final String displayName;
 
+  ValueNotifier<PeerStateBehavior> onConsumerCallback =
+      ValueNotifier(PeerStateEmpty());
+
   bool _closed = false;
 
   WebSocket? _webSocket;
   Device? _mediasoupDevice;
   Transport? _sendTransport;
   Transport? _recvTransport;
+
+  // bool setPausedIn
   bool _produce = false;
   bool _consume = true;
   StreamSubscription<MediaDevicesState>? _mediaDevicesBlocSubscription;
@@ -75,6 +81,7 @@ class RoomClientRepository {
     }
 
     peersBloc.state.peers.forEach((key, value) {
+      peersBloc.add(PeerRemove(peerId: key));
       peersBloc.add(PeerRemove(peerId: key));
     });
 
@@ -585,6 +592,7 @@ class RoomClientRepository {
     };
 
     _webSocket!.onNotification = (notification) async {
+      final name = 'onNotification';
       switch (notification['method']) {
         //TODO: todo;
         case 'producerScore':
@@ -593,27 +601,34 @@ class RoomClientRepository {
           }
         case 'consumerClosed':
           {
+            log('consumerClosed', name: name);
             String consumerId = notification['data']['consumerId'];
             peersBloc.add(PeerRemoveConsumer(consumerId: consumerId));
-
+            onConsumerCallback.value = PeerStateBehavior(consumerId: consumerId, behavior: PeerBehavior.leave);
             break;
           }
         case 'consumerPaused':
           {
+            log('consumerPaused(${notification})', name: name);
             String consumerId = notification['data']['consumerId'];
             peersBloc.add(PeerPausedConsumer(consumerId: consumerId));
+            onConsumerCallback.value = PeerStateBehavior(consumerId: consumerId, behavior: PeerBehavior.mute);
             break;
           }
 
         case 'consumerResumed':
           {
+            log('consumerResumed(${notification})', name: name);
             String consumerId = notification['data']['consumerId'];
             peersBloc.add(PeerResumedConsumer(consumerId: consumerId));
+            onConsumerCallback.value = PeerStateBehavior(consumerId: consumerId, behavior: PeerBehavior.unMute);
             break;
           }
 
         case 'newPeer':
           {
+            log('newPeer', name: name);
+
             final Map<String, dynamic> newPeer =
                 Map<String, dynamic>.from(notification['data']);
             peersBloc.add(PeerAdd(newPeer: newPeer));
@@ -622,6 +637,8 @@ class RoomClientRepository {
 
         case 'peerClosed':
           {
+            log('peerClosed', name: name);
+
             String peerId = notification['data']['peerId'];
             peersBloc.add(PeerRemove(peerId: peerId));
             break;
@@ -632,4 +649,22 @@ class RoomClientRepository {
       }
     };
   }
+}
+
+enum PeerBehavior {
+  join,
+  unMute,
+  mute,
+  leave,
+}
+
+class PeerStateBehavior {
+  final String? consumerId;
+  final PeerBehavior? behavior;
+
+  PeerStateBehavior({required this.consumerId, required this.behavior});
+}
+
+class PeerStateEmpty extends PeerStateBehavior {
+  PeerStateEmpty() : super(behavior: null, consumerId: null);
 }
